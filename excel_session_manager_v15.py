@@ -735,7 +735,7 @@ class ExcelSessionManagerApp:
                 excel.AskToUpdateLinks = True
                 self.root.after(0, lambda: messagebox.showinfo("Complete", f"{len(valid_rows)} file(s) opened."))
             except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
+                self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
             finally:
                 if excel is not None:
                     del excel
@@ -773,14 +773,13 @@ class ExcelSessionManagerApp:
                 excel.AskToUpdateLinks = True
                 self.root.after(0, lambda: messagebox.showinfo("Complete", f"{len(valid_rows)} file(s) opened."))
             except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
+                self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
             finally:
                 if excel is not None:
                     del excel
                 gc.collect()
                 pythoncom.CoUninitialize()
                 self.root.after(200, self.show_names)
-
         threading.Thread(target=thread_job, daemon=True).start()
 
 if __name__ == "__main__":
