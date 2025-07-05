@@ -643,6 +643,9 @@ class ExcelSessionManagerApp:
             for name, path, _, _ in selected:
                 for wb in excel.Workbooks:
                     if wb.Name == name and wb.FullName == path: wb.Close(SaveChanges=save_before_close)
+            # your patch added between the existing code
+            if excel.Workbooks.Count == 0:
+                excel.Quit()
             messagebox.showinfo("Complete", f"Selected files have been {'saved and ' if save_before_close else ''}closed.")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while closing the files:\n{str(e)}")
