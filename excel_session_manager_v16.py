@@ -215,14 +215,25 @@ class ExcelSessionManagerApp:
         listbox_frame = tk.Frame(main_frame)
         listbox_frame.pack(side=tk.LEFT, fill='both', expand=True, pady=10)
 
+        select_console_frame = tk.Frame(listbox_frame)
+        select_console_frame.pack(anchor='w', padx=0, pady=(0, 2), fill='x')
+
         self.select_all_var = tk.BooleanVar(value=False)
         select_all_cb = tk.Checkbutton(
-            listbox_frame,
+            select_console_frame,
             text="Select All",
             variable=self.select_all_var,
             command=self.on_select_all_toggle
         )
-        select_all_cb.pack(anchor='w', padx=8, pady=(0, 2))
+        select_all_cb.pack(side='left', padx=(8,0))
+
+        self.show_console_progress_var = tk.BooleanVar(value=True)
+        show_console_cb = tk.Checkbutton(
+            select_console_frame,
+            text="Show Progress Console",
+            variable=self.show_console_progress_var
+        )
+        show_console_cb.pack(side='left', padx=(12,0))
 
         style = ttk.Style()
         style.configure("Treeview.Heading", font=("Consolas", 12, "bold"))
@@ -231,7 +242,6 @@ class ExcelSessionManagerApp:
         self.tree = DragSelectTreeview(listbox_frame, columns=("col1", "col2"), show="headings", selectmode="extended")
         self.tree.column("col1", anchor="w")
         self.tree.column("col2", anchor="e", width=320, stretch=False)
-        # your patch added between the existing code
         tree_yscrollbar = tk.Scrollbar(listbox_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=tree_yscrollbar.set)
         tree_yscrollbar.pack(side="right", fill="y")
@@ -652,54 +662,114 @@ class ExcelSessionManagerApp:
         win32gui.EnumWindows(enum_handler, {"captions": self.target_captions})
 
     def save_selected_workbooks(self):
-        pythoncom.CoInitialize()
-        try:
-            excel = win32com.client.GetActiveObject("Excel.Application")
-            selected = self.get_selected_workbooks()
-            if not selected: return
-            for name, path, _, _ in selected:
-                for wb in excel.Workbooks:
-                    if wb.Name == name and wb.FullName == path: wb.Save()
-            messagebox.showinfo("Complete", "Selected Excel files have been saved successfully.")
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred while saving the files:\n{str(e)}")
-        finally:
-            pythoncom.CoUninitialize()
-            self.show_names()
+        selected = self.get_selected_workbooks()
+        if not selected: return
+        # your patch added between the existing code
+        show_console = self.show_console_progress_var.get() if hasattr(self, "show_console_progress_var") else True
+        popup = ConsolePopup(self.root, title="Save Selected Progress") if show_console else None
+        def print_to_popup(msg):
+            if popup: self.root.after(0, lambda: popup.print(msg))
+        def thread_job():
+            pythoncom.CoInitialize()
+            try:
+                excel = win32com.client.GetActiveObject("Excel.Application")
+                print_to_popup(f"Saving {len(selected)} file(s)...")
+                print_to_popup("-" * 80)
+                for idx, (name, path, _, _) in enumerate(selected, 1):
+                    print_to_popup(f"({idx}/{len(selected)}) Saving: {path}")
+                    t0 = time.time()
+                    saved = False
+                    for wb in excel.Workbooks:
+                        if wb.Name == name and wb.FullName == path:
+                            try:
+                                wb.Save()
+                                print_to_popup(f"({idx}/{len(selected)}) Saved: {path}")
+                                saved = True
+                            except Exception as e:
+                                print_to_popup(f"({idx}/{len(selected)}) Save failed: {path} ({e})")
+                            break
+                    if not saved:
+                        print_to_popup(f"({idx}/{len(selected)}) Workbook not found in Excel: {path}")
+                    t1 = time.time()
+                    used_sec = t1 - t0
+                    print_to_popup(f"used time: {used_sec:.2f} sec")
+                    print_to_popup("-" * 80)
+                print_to_popup("Save selected complete.")
+                self.root.after(0, lambda: messagebox.showinfo("Complete", "Selected Excel files have been saved successfully."))
+            except Exception as e:
+                print_to_popup(f"Error: {str(e)}")
+                self.root.after(0, lambda e=e: messagebox.showerror("Error", f"An error occurred while saving the files:\n{str(e)}"))
+            finally:
+                pythoncom.CoUninitialize()
+                self.root.after(0, self.show_names)
+        threading.Thread(target=thread_job, daemon=True).start()
+
 
     def close_selected_workbooks(self, save_before_close=False):
-        pythoncom.CoInitialize()
-        excel = None
-        try:
-            excel = win32com.client.GetActiveObject("Excel.Application")
+        selected = self.get_selected_workbooks()
+        if not selected: return
+        # your patch added between the existing code
+        show_console = self.show_console_progress_var.get() if hasattr(self, "show_console_progress_var") else True
+        popup = ConsolePopup(self.root, title="Save and Close Progress" if save_before_close else "Close Progress") if show_console else None
+        def print_to_popup(msg):
+            if popup: self.root.after(0, lambda: popup.print(msg))
+        def thread_job():
+            pythoncom.CoInitialize()
+            excel = None
             orig_alert = None
             try:
-                orig_alert = excel.DisplayAlerts
-                excel.DisplayAlerts = False
-            except Exception:
-                pass
-            selected = self.get_selected_workbooks()
-            if not selected: return
-            for name, path, _, _ in selected:
-                for wb in excel.Workbooks:
-                    if wb.Name == name and wb.FullName == path: wb.Close(SaveChanges=save_before_close)
-            # your patch added between the existing code
-            if excel.Workbooks.Count == 0:
-                excel.Quit()
-            messagebox.showinfo("Complete", f"Selected files have been {'saved and ' if save_before_close else ''}closed.")
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred while closing the files:\n{str(e)}")
-        finally:
-            if excel is not None:
+                excel = win32com.client.GetActiveObject("Excel.Application")
                 try:
-                    if hasattr(excel, "DisplayAlerts") and orig_alert is not None:
-                        excel.DisplayAlerts = orig_alert
+                    orig_alert = excel.DisplayAlerts
+                    excel.DisplayAlerts = False
                 except Exception:
                     pass
-                del excel
-            gc.collect()
-            pythoncom.CoUninitialize()
-            self.show_names()
+                print_to_popup(f"{'Save and close' if save_before_close else 'Close'} {len(selected)} file(s)...")
+                print_to_popup("-" * 80)
+                for idx, (name, path, _, _) in enumerate(selected, 1):
+                    t0 = time.time()
+                    closed = False
+                    if save_before_close:
+                        print_to_popup(f"({idx}/{len(selected)}) Saving and closing: {path}")
+                    else:
+                        print_to_popup(f"({idx}/{len(selected)}) Closing: {path}")
+                    for wb in excel.Workbooks:
+                        if wb.Name == name and wb.FullName == path:
+                            try:
+                                wb.Close(SaveChanges=save_before_close)
+                                closed = True
+                                if save_before_close:
+                                    print_to_popup(f"({idx}/{len(selected)}) Saved and closed: {path}")
+                                else:
+                                    print_to_popup(f"({idx}/{len(selected)}) Closed: {path}")
+                            except Exception as e:
+                                print_to_popup(f"({idx}/{len(selected)}) Close failed: {path} ({e})")
+                            break
+                    if not closed:
+                        print_to_popup(f"({idx}/{len(selected)}) Workbook not found in Excel: {path}")
+                    t1 = time.time()
+                    used_sec = t1 - t0
+                    print_to_popup(f"used time: {used_sec:.2f} sec")
+                    print_to_popup("-" * 80)
+                if excel.Workbooks.Count == 0:
+                    excel.Quit()
+                print_to_popup(f"{'Save and close' if save_before_close else 'Close'} selected complete.")
+                self.root.after(0, lambda: messagebox.showinfo("Complete", f"Selected files have been {'saved and ' if save_before_close else ''}closed."))
+            except Exception as e:
+                print_to_popup(f"Error: {str(e)}")
+                self.root.after(0, lambda e=e: messagebox.showerror("Error", f"An error occurred while closing the files:\n{str(e)}"))
+            finally:
+                if excel is not None:
+                    try:
+                        if hasattr(excel, "DisplayAlerts") and orig_alert is not None:
+                            excel.DisplayAlerts = orig_alert
+                    except Exception:
+                        pass
+                    del excel
+                gc.collect()
+                pythoncom.CoUninitialize()
+                self.root.after(0, self.show_names)
+        threading.Thread(target=thread_job, daemon=True).start()
 
     def minimize_all_excel(self):
         def enum_handler(hwnd, ctx):
@@ -747,6 +817,11 @@ class ExcelSessionManagerApp:
             title="Load Session", filetypes=[("Excel Session", "*.xlsx"), ("All Files", "*.*")]
         )
         if not file_path or not os.path.exists(file_path): return
+        # your patch added between the existing code
+        show_console = self.show_console_progress_var.get() if hasattr(self, "show_console_progress_var") else True
+        popup = ConsolePopup(self.root, title="Load Session Progress") if show_console else None
+        def print_to_popup(msg):
+            if popup: self.root.after(0, lambda: popup.print(msg))
         def thread_job():
             pythoncom.CoInitialize()
             excel = None
@@ -756,25 +831,43 @@ class ExcelSessionManagerApp:
                 rows = list(ws.iter_rows(min_row=2, values_only=True))
                 valid_rows = [r for r in rows if r and r[0] and os.path.exists(r[0])]
                 if not valid_rows:
+                    print_to_popup("No valid file paths found.")
                     self.root.after(0, lambda: messagebox.showwarning("Warning", "No valid file paths found."))
                     return
+                print_to_popup(f"Loading session from {file_path} ({len(valid_rows)} file(s))")
+                print_to_popup("-" * 80)
                 excel = win32com.client.Dispatch("Excel.Application")
                 excel.Visible = True
                 excel.AskToUpdateLinks = False
-                for r in valid_rows:
+                for idx, r in enumerate(valid_rows, 1):
                     path, sheet, cell = (r[0], r[1] if len(r) > 1 else None, r[2] if len(r) > 2 else None)
+                    print_to_popup(f"({idx}/{len(valid_rows)}) Opening: {path}")
+                    t0 = time.time()
                     try:
                         wb_xl = excel.Workbooks.Open(Filename=path, UpdateLinks=0)
+                        try:
+                            excel.Visible = True
+                        except Exception:
+                            pass
                         if sheet:
                             try:
                                 sht = wb_xl.Sheets(sheet)
                                 sht.Activate()
                                 if cell: sht.Range(cell).Select()
-                            except Exception: pass
-                    except Exception: pass
+                            except Exception as e:
+                                print_to_popup(f"  (Sheet/Cell select error: {e})")
+                        print_to_popup(f"({idx}/{len(valid_rows)}) Opened: {path}")
+                    except Exception as e:
+                        print_to_popup(f"({idx}/{len(valid_rows)}) Failed to open: {path} ({e})")
+                    t1 = time.time()
+                    used_sec = t1 - t0
+                    print_to_popup(f"used time: {used_sec:.2f} sec")
+                    print_to_popup("-" * 80)
                 excel.AskToUpdateLinks = True
+                print_to_popup(f"All files loaded. Total: {len(valid_rows)}")
                 self.root.after(0, lambda: messagebox.showinfo("Complete", f"{len(valid_rows)} file(s) opened."))
             except Exception as e:
+                print_to_popup(f"Error loading session: {str(e)}")
                 self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
             finally:
                 if excel is not None:
@@ -784,43 +877,50 @@ class ExcelSessionManagerApp:
                 self.root.after(200, self.show_names)
         threading.Thread(target=thread_job, daemon=True).start()
 
-    def load_session_from_path(self, file_path):
-        def thread_job():
-            pythoncom.CoInitialize()
-            excel = None
+def load_session_from_path(self, file_path):
+    def thread_job():
+        pythoncom.CoInitialize()
+        excel = None
+        try:
+            wb = openpyxl.load_workbook(file_path)
+            ws = wb.active
+            rows = list(ws.iter_rows(min_row=2, values_only=True))
+            valid_rows = [r for r in rows if r and r[0] and os.path.exists(r[0])]
+            if not valid_rows:
+                self.root.after(0, lambda: messagebox.showwarning("Warning", "No valid file paths found."))
+                return
+            excel = win32com.client.Dispatch("Excel.Application")
             try:
-                wb = openpyxl.load_workbook(file_path)
-                ws = wb.active
-                rows = list(ws.iter_rows(min_row=2, values_only=True))
-                valid_rows = [r for r in rows if r and r[0] and os.path.exists(r[0])]
-                if not valid_rows:
-                    self.root.after(0, lambda: messagebox.showwarning("Warning", "No valid file paths found."))
-                    return
-                excel = win32com.client.Dispatch("Excel.Application")
                 excel.Visible = True
-                excel.AskToUpdateLinks = False
-                for r in valid_rows:
-                    path, sheet, cell = (r[0], r[1] if len(r) > 1 else None, r[2] if len(r) > 2 else None)
+            except Exception:
+                pass
+            excel.AskToUpdateLinks = False
+            for r in valid_rows:
+                path, sheet, cell = (r[0], r[1] if len(r) > 1 else None, r[2] if len(r) > 2 else None)
+                try:
+                    wb_xl = excel.Workbooks.Open(Filename=path, UpdateLinks=0)
                     try:
-                        wb_xl = excel.Workbooks.Open(Filename=path, UpdateLinks=0)
-                        if sheet:
-                            try:
-                                sht = wb_xl.Sheets(sheet)
-                                sht.Activate()
-                                if cell: sht.Range(cell).Select()
-                            except Exception: pass
-                    except Exception: pass
-                excel.AskToUpdateLinks = True
-                self.root.after(0, lambda: messagebox.showinfo("Complete", f"{len(valid_rows)} file(s) opened."))
-            except Exception as e:
-                self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
-            finally:
-                if excel is not None:
-                    del excel
-                gc.collect()
-                pythoncom.CoUninitialize()
-                self.root.after(200, self.show_names)
-        threading.Thread(target=thread_job, daemon=True).start()
+                        excel.Visible = True
+                    except Exception:
+                        pass
+                    if sheet:
+                        try:
+                            sht = wb_xl.Sheets(sheet)
+                            sht.Activate()
+                            if cell: sht.Range(cell).Select()
+                        except Exception: pass
+                except Exception: pass
+            excel.AskToUpdateLinks = True
+            self.root.after(0, lambda: messagebox.showinfo("Complete", f"{len(valid_rows)} file(s) opened."))
+        except Exception as e:
+            self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Error loading session:\n{str(e)}"))
+        finally:
+            if excel is not None:
+                del excel
+            gc.collect()
+            pythoncom.CoUninitialize()
+            self.root.after(200, self.show_names)
+    threading.Thread(target=thread_job, daemon=True).start()
 
 if __name__ == "__main__":
     root = tk.Tk()
