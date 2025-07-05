@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, font
 import pythoncom
 import win32com.client
+from win32com.client import constants
 import win32gui
 import win32con
 import time
