@@ -15,10 +15,13 @@ def run_excel_link_update(options: dict, print_func=None):
     SHOW_LAST_MODIFIED = bool(options.get("SHOW_LAST_MODIFIED", False))
     SHOW_STATUS = bool(options.get("SHOW_STATUS", False))
     SAVE_LOG = bool(options.get("SAVE_LOG", True))
-    if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR, exist_ok=True)
-    LOG_FILE = os.path.join(LOG_DIR, f"excel_link_update_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
-    log_file_handler = open(LOG_FILE, "a", encoding="utf-8") if SAVE_LOG else None
+    if SAVE_LOG:
+        if not os.path.exists(LOG_DIR):
+            os.makedirs(LOG_DIR, exist_ok=True)
+        LOG_FILE = os.path.join(LOG_DIR, f"excel_link_update_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        log_file_handler = open(LOG_FILE, "a", encoding="utf-8")
+    else:
+        log_file_handler = None
 
     def print_log(msg):
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
