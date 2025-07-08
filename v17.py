@@ -366,7 +366,6 @@ class ExcelSessionManagerApp:
     def get_open_excel_files(self):
         pythoncom.CoInitialize()
         excel_files, file_paths, sheet_names, active_cells = [], [], [], []
-        excel = None
         try:
             excel = win32com.client.GetActiveObject("Excel.Application")
             for wb in excel.Workbooks:
@@ -380,15 +379,12 @@ class ExcelSessionManagerApp:
                 except Exception:
                     sheet_names.append("")
                     active_cells.append("")
-        except Exception:
-            pass
+        except Exception as e:
+            print("Error:", e)
         finally:
-            if excel is not None:
-                del excel
-            gc.collect()
             pythoncom.CoUninitialize()
         return excel_files, file_paths, sheet_names, active_cells
-
+        
     def open_link_update_options(self):
         import tkinter as tk
         from tkinter import filedialog
@@ -562,44 +558,14 @@ class ExcelSessionManagerApp:
         self.update_treeview_font()
 
     def get_all_excel_instances(self):
-        """
-        Finds all running instances of Excel.
-        """
         import pythoncom
         import win32com.client
-
-        # List to hold all unique Excel instances
         instances = []
         try:
-            # Use Running Object Table (ROT) to find all active Excel COM objects
-            rot = pythoncom.GetRunningObjectTable()
-            enum = rot.EnumRunning()
-            monikers = []
-            while True:
-                try:
-                    moniker = enum.Next(1)[0]
-                    display_name = moniker.GetDisplayName(None, None)
-                    if "Excel.Application" in display_name:
-                        monikers.append(moniker)
-                except Exception:
-                    break
-            for moniker in monikers:
-                try:
-                    obj = rot.GetObject(moniker)
-                    excel = win32com.client.Dispatch(obj.QueryInterface(pythoncom.IID_IDispatch))
-                    # Avoid duplicates by HWND
-                    if hasattr(excel, "Hwnd"):
-                        if not any(getattr(e, "Hwnd", None) == excel.Hwnd for e in instances):
-                            instances.append(excel)
-                except Exception:
-                    continue
-        except Exception:
-            # Fallback: single instance
-            try:
-                excel = win32com.client.GetActiveObject("Excel.Application")
-                instances.append(excel)
-            except Exception:
-                pass
+            excel = win32com.client.GetActiveObject("Excel.Application")
+            instances.append(excel)
+        except Exception as e:
+            print("GetActiveObject error:", e)
         return instances
 
     def get_open_excel_files(self):
