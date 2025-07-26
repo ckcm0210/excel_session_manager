@@ -1,0 +1,1 @@
+# UI components package for Excel Session Manager

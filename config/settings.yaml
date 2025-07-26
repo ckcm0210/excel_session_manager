@@ -1,0 +1,295 @@
+# Excel Session Manager Configuration File
+# This file contains all configurable settings for the application
+# Modify these values to customize the behavior according to your needs
+
+# =============================================================================
+# USER INTERFACE SETTINGS
+# =============================================================================
+ui:
+  # Main window configuration
+  window:
+    # Default window size when application starts (width x height)
+    # Larger values provide more space but may not fit on smaller screens
+    # Increased height to accommodate Performance Monitor and External Links buttons
+    default_size: "1200x850"
+    
+    # Minimum window size to prevent UI elements from overlapping
+    # Do not set below these values or buttons may become unusable
+    min_size: "600x650"
+    
+    # Window title displayed in the title bar
+    title: "Excel Session Manager"
+  
+  # Font settings for the file list display
+  fonts:
+    # Available monospace fonts for better alignment in file lists
+    # Monospace fonts ensure consistent character spacing for tabular data
+    # First available font in the list will be used as default
+    monospace_options:
+      - "Consolas"          # Windows default, excellent readability
+      - "Courier New"       # Cross-platform compatibility
+      - "Fira Code"         # Modern programming font with ligatures
+      - "JetBrains Mono"    # Popular among developers
+      - "DejaVu Sans Mono"  # Good Unicode support
+      - "Source Code Pro"   # Adobe's open source font
+      - "Monaco"            # macOS default monospace
+    
+    # Default font family (must be one from monospace_options above)
+    default_family: "Consolas"
+    
+    # Default font size for file list and details
+    # Larger values improve readability but reduce visible items
+    # Range: 8-32 pixels recommended
+    default_size: 12
+    
+    # Font size for column headers (usually slightly larger than content)
+    header_size: 12
+    
+    # Font weight for headers ("normal" or "bold")
+    # Bold headers help distinguish from content rows
+    header_weight: "bold"
+  
+  # Mini widget (floating pin) configuration
+  mini_widget:
+    # Size of the mini widget when in floating mode
+    # Square dimensions work best for the floating icon
+    size: 180
+    
+    # Default position when entering mini mode (x, y coordinates)
+    # Position is relative to screen top-left corner
+    default_position: "150+150"
+    
+    # Icon file for the mini widget (optional)
+    # If file doesn't exist, a fallback emoji will be used
+    icon_file: "maximize_full_screen.png"
+    
+    # Fallback emoji when icon file is not available
+    # Unicode emoji for maximize/restore functionality
+    fallback_emoji: "🗖"
+    
+    # Font size for the fallback emoji
+    emoji_font_size: 48
+
+# =============================================================================
+# EXCEL INTEGRATION SETTINGS
+# =============================================================================
+excel:
+  # COM (Component Object Model) settings for Excel integration
+  com:
+    # Whether to initialize COM for each operation
+    # True: More stable but slower performance
+    # False: Faster but may cause issues in multi-threaded scenarios
+    initialize_per_operation: true
+    
+    # Whether to clean up zombie Excel processes on startup
+    # Zombie processes can cause COM connection issues
+    cleanup_zombies_on_start: true
+  
+  # File operation settings
+  operations:
+    # Default behavior for Excel alerts during operations
+    # False: Suppress Excel dialog boxes for automated operations
+    # True: Show Excel dialogs (may require user interaction)
+    display_alerts: false
+    
+    # Whether to ask for link updates when opening files
+    # False: Skip link update prompts for faster opening
+    # True: Prompt user for each file with external links
+    ask_to_update_links: false
+    
+    # Maximum retry attempts for failed save operations
+    # Higher values increase reliability but may cause delays
+    max_save_retries: 3
+    
+    # Delay between retry attempts (seconds)
+    # Allows time for file system or Excel to recover
+    retry_delay: 0.1
+    
+    # Timeout for file operations (seconds)
+    # Prevents hanging on problematic files
+    operation_timeout: 30
+
+# =============================================================================
+# SESSION MANAGEMENT SETTINGS
+# =============================================================================
+session:
+  # Default directories for session files
+  directories:
+    # Default location for saving session files
+    # Use forward slashes or double backslashes for Windows paths
+    default_save: "D:/Pzone/Sessions"
+    
+    # Default location for loading session files
+    # Can be different from save location if needed
+    default_load: "D:/Pzone/Sessions"
+  
+  # Session file format settings
+  file_format:
+    # Default file extension for session files
+    # .xlsx format allows viewing session content in Excel
+    extension: ".xlsx"
+    
+    # Whether to include timestamp in saved session filenames
+    # True: Prevents accidental overwrites of existing sessions
+    # False: Uses exact filename specified by user
+    include_timestamp: true
+    
+    # Timestamp format for session filenames
+    # Uses Python strftime format codes
+    timestamp_format: "%Y-%m-%d_%H-%M-%S"
+  
+  # Session validation settings
+  validation:
+    # Whether to validate file paths when loading sessions
+    # True: Only load files that actually exist on disk
+    # False: Attempt to load all files (may show errors)
+    validate_file_existence: true
+    
+    # Whether to show file selection dialog when loading sessions
+    # True: User can choose which files to load from session
+    # False: Load all files from session automatically
+    show_file_selection: true
+
+# =============================================================================
+# EXTERNAL LINK UPDATE SETTINGS
+# =============================================================================
+external_links:
+  # Default settings for external link updates
+  defaults:
+    # Number of days to check for recent modifications
+    # Only files modified within this period will be updated
+    # Higher values update more files but take longer
+    check_days: 14
+    
+    # Whether to show full file paths in update reports
+    # True: Shows complete path for better identification
+    # False: Shows only filename to save space
+    show_full_path: true
+    
+    # Whether to display link information during updates
+    # True: Shows each link being processed (verbose output)
+    # False: Only shows summary information
+    show_link_details: true
+    
+    # Whether to show last modified dates for external files
+    # Helps users understand why certain files are being updated
+    show_last_modified: true
+    
+    # Whether to show update status for each link
+    # Provides detailed feedback on update operations
+    show_update_status: true
+  
+  # Logging settings for external link operations
+  logging:
+    # Whether to save detailed logs of link update operations
+    # Logs help troubleshoot issues and track changes
+    save_logs: true
+    
+    # Default directory for link update log files
+    log_directory: "D:/Pzone/Log"
+    
+    # Whether to save Excel summary of scanned external links
+    # Creates spreadsheet with all discovered external references
+    save_scan_summary: false
+    
+    # Directory for scan summary Excel files
+    summary_directory: "D:/Pzone/Log"
+    
+    # Log filename format (timestamp will be appended)
+    log_filename_prefix: "excel_link_update_log"
+    
+    # Summary filename format (timestamp will be appended)
+    summary_filename_prefix: "excel_link_scan_summary"
+
+# =============================================================================
+# PROGRESS DISPLAY SETTINGS
+# =============================================================================
+progress:
+  # Console popup window settings
+  console:
+    # Default size for progress console windows
+    # Larger windows show more information but take more screen space
+    default_size: "1400x1200"
+    
+    # Whether console windows are resizable
+    # True: Users can adjust window size as needed
+    # False: Fixed size windows for consistent appearance
+    resizable: true
+    
+    # Console text appearance
+    font_family: "Consolas"
+    font_size: 11
+    
+    # Console color scheme (dark theme)
+    # Background color for console text area
+    background_color: "#111"
+    
+    # Text color for console output
+    text_color: "#f9f9f9"
+    
+    # Whether to enable text wrapping in console
+    # True: Long lines wrap to next line
+    # False: Long lines extend horizontally with scrollbar
+    word_wrap: true
+  
+  # Default behavior for showing progress windows
+  behavior:
+    # Whether to show progress console by default
+    # Users can still toggle this setting in the UI
+    show_console_by_default: true
+    
+    # Whether progress windows stay on top of other windows
+    # Helps users monitor long-running operations
+    console_always_on_top: false
+
+# =============================================================================
+# PERFORMANCE SETTINGS
+# =============================================================================
+performance:
+  # Settings to optimize application performance
+  refresh:
+    # Maximum retry attempts for getting stable workbook list
+    # Higher values improve reliability but may slow refresh
+    max_retry_attempts: 5
+    
+    # Wait time between retry attempts (seconds)
+    # Allows Excel to stabilize between checks
+    retry_wait_time: 0.5
+  
+  # Memory management settings
+  memory:
+    # Whether to force garbage collection after major operations
+    # Helps prevent memory leaks but may cause brief pauses
+    force_gc_after_operations: true
+    
+    # Whether to explicitly delete COM object references
+    # Recommended for preventing memory leaks with Excel COM
+    explicit_com_cleanup: true
+
+# =============================================================================
+# DEBUGGING AND DEVELOPMENT SETTINGS
+# =============================================================================
+debug:
+  # Settings for troubleshooting and development
+  logging:
+    # Enable detailed debug logging
+    # Creates verbose logs for troubleshooting issues
+    enable_debug_logging: false
+    
+    # Log file location for debug information
+    debug_log_file: "D:/Pzone/Log/debug.log"
+    
+    # Whether to print debug information to console
+    # Useful during development but may clutter output
+    print_to_console: false
+  
+  # Development mode settings
+  development:
+    # Enable development mode features
+    # May include additional debugging tools and verbose output
+    enable_dev_mode: false
+    
+    # Whether to show detailed error messages
+    # True: Full stack traces and technical details
+    # False: User-friendly error messages only
+    show_detailed_errors: false

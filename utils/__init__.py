@@ -1,0 +1,1 @@
+# Utility functions package for Excel Session Manager
